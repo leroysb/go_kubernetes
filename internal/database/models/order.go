@@ -1,10 +1,13 @@
 package models
 
+import "gorm.io/gorm"
+
 type Order struct {
-    ID        int     `json:"id"`
-    ProductID int     `json:"product_id"`
-    Number    int     `json:"number"`
-    Amount    float64 `json:"amount"`
-    Time      string  `json:"time"`
+    gorm.Model
+    CustomerID uint
+    ProductID  uint
+    Quantity   int
+    Amount     float64
+    Time       string
     // Add other fields as needed
 }

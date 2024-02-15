@@ -1,8 +1,11 @@
 package models
 
+import "gorm.io/gorm"
+
 type Customer struct {
-    ID    int    `json:"id"`
-    Name  string `json:"name"`
-    Email string `json:"email"`
+    gorm.Model
+    Name  string
+    Email string
+    Phone string
     // Add other fields as needed
 }
