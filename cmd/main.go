@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
-	"/internal/database"
+	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
 // var db *sql.DB

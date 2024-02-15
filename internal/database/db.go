@@ -8,14 +8,10 @@ import (
     "gorm.io/driver/postgres"
     "gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"/internal/models"
+	"github.com/leroysb/go_kubernetes/internal/database/models"
 )
 
-type DBinstance struct {
-	DB *gorm.DB
-}
-
-var DB *DBinstance
+var db *gorm.DB
 
 // InitializeDB initializes the database connection and performs migrations
 func ConnectDB() {
@@ -33,7 +29,7 @@ func ConnectDB() {
     if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
 		// os.Exit(11)
-        return nil, err
+        return err
     }
 
 	log.Println("Connected to database")
@@ -45,10 +41,10 @@ func ConnectDB() {
     err = MigrateDB()
     if err != nil {
 		log.Fatalf("Error performing auto-migration: %v", err)
-        return nil, err
+        return err
     }
 
-	return db, nil
+	return nil
 }
 
 // MigrateDB performs auto-migration for all models
