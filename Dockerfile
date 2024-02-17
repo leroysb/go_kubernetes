@@ -1,26 +1,21 @@
+# Use the official Golang 1.22 as the base image
 FROM golang:1.22
 
 # Set the Current Working Directory inside the container
 WORKDIR /usr/src/app
 
 # Download Go modules
-COPY go.mod  ./
-COPY go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 # Copy the source code into the container
 COPY . .
 
-# RUN go mod tidy
+# Build the binary
+RUN go build -o /usr/local/bin/app ./cmd
 
-# Navigate to the cmd directory
-# WORKDIR /usr/src/app/cmd
-
-# build the binary
-# RUN go build -v -o /usr/local/bin/app ./...
-
-# This container exposes port 8080 to the outside world
+# Expose the port on which the application will run
 EXPOSE 8080
 
-# Run the executable
-# CMD ["./api"]
+# Command to run the executable
+CMD ["/usr/local/bin/app"]

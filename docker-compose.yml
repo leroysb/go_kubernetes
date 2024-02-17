@@ -4,27 +4,30 @@ services:
   go_app:
     container_name: go_app
     image: leroysb/go_app:1.0.0
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file:
       - .env
     ports:
       - 8080:8080
     volumes:
       - .:/usr/src/app
-    command: go run cmd/main.go -b 0.0.0.0
+    depends_on:
+      - go_db
 
   go_db:
     container_name: go_db
     image: postgres:alpine
-    environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_DB: ${DB_NAME}
+    # environment:
+    #   POSTGRES_PASSWORD: ${DB_PASSWORD}
+    #   POSTGRES_USER: ${DB_USER}
+    #   POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   pgdata:
