@@ -11,21 +11,21 @@ func setupRoutes(app *fiber.App) {
 	app.Use(cors.New())
 	app.Use(logger.New())
 
-	api := app.Group("/api")
+	api := app.Group("/api/v1")
 	api.Get("/status", StatusHandler)
-	// api.Post("/products", CreateProducts)
 	// api.Get("/products", GetProducts)
+	// api.Post("/products", CreateProducts)
 	// api.Get("/products/:id", GetProduct)
 	// api.Put("/products/:id", UpdateProduct)
 	// api.Delete("/products/:id", DeleteProduct)
 
 	// api.Post("/customers", CreateCustomer)
-	// api.Get("/customers", GetCustomers)
-	// api.Get("/customers/:id", GetCustomer)
+	// api.Get("/customers/me", GetCustomers)
+	// api.Post("/customers/login", GetCustomer)
+	// api.Post("/customers/logout", GetCustomer)
 
 	// api.Post("/orders", CreateOrder)
 	// api.Get("/orders", GetOrders)
-	// api.Get("/orders/:id", GetOrder)
 	// api.Put("/orders/:id", UpdateOrder)
 	// api.Delete("/orders/:id", DeleteOrder)
 
