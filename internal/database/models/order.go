@@ -11,4 +11,5 @@ type Order struct {
 	Quantity   int     `json:"quantity" gorm:"integer;not null;default:null"`
 	Amount     float64 `json:"amount" gorm:"float;not null;default:null"`
 	Time       string  `json:"time" gorm:"text;not null;default:null"`
+	Status     string  `json:"status" gorm:"text;not null;default:null"`
 }
