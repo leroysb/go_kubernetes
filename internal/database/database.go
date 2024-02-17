@@ -36,9 +36,6 @@ func ConnectDB() {
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		// log.Fatalf("Failed to connect to database: %v", err)
-		// err = fmt.Errorf("failed to connect to database: %v", err)
-		// log.Println(err)
 		log.Printf("Failed to connect to database: %v", err)
 		return
 	}
@@ -48,45 +45,20 @@ func ConnectDB() {
 
 	// Perform auto-migration
 	log.Println("Performing auto-migration")
-	if err := MigrateDB(); err != nil {
-		// log.Fatalf("Error performing auto-migration: %v", err)
-		// err = fmt.Errorf("error performing auto-migration: %v", err)
-		// log.Println(err)
-		log.Printf("Error performing auto-migration: %v", err)
-		return
-	}
+	db.AutoMigrate(&models.Product{}, &models.Customer{}, &models.Order{})
 
 	log.Println("Database migration successful")
-}
 
-// MigrateDB performs auto-migration for all models
-func MigrateDB() error {
-	return db.AutoMigrate(&models.Product{}, &models.Customer{}, &models.Order{})
-}
-
-// GetDB returns the initialized database instance
-func GetDB() *gorm.DB {
-	return db
 }
 
 func CheckDBConnection() bool {
-	sqlDB, err := db.DB()
+	sqlDB, _ := db.DB()
 
-	err = sqlDB.Ping()
+	err := sqlDB.Ping()
 	if err != nil {
 		log.Printf("Error pinging database: %v", err)
 		return false
 	}
-
-	// if db == nil {
-	// 	log.Println("Database connection is nil")
-	// 	return false
-	// }
-
-	// if err != nil {
-	// 	log.Printf("Error getting underlying database connection: %v", err)
-	// 	return false
-	// }
 
 	log.Println("Database connection is alive")
 	return true
