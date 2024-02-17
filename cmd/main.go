@@ -10,6 +10,13 @@ import (
 )
 
 func main() {
+	var err error
+
+	err = godotenv.Load("../.env")
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
 	// Connect to database
 	database.ConnectDB()
 
@@ -20,11 +27,6 @@ func main() {
 	setupRoutes(app)
 
 	// Start server
-	var err error
-	err = godotenv.Load(".env")
-	if err != nil {
-		log.Println("Error loading .env file")
-	}
 	port := os.Getenv("API_PORT")
 
 	if port == "" {
