@@ -4,6 +4,7 @@ import "gorm.io/gorm"
 
 type Order struct {
 	gorm.Model
+	ID         int      `json:"id" gorm:"primaryKey;autoIncrement;not null"`
 	Customer   Customer `gorm:"foreignKey:CustomerID"`
 	CustomerID uint
 	Product    Product `gorm:"foreignKey:ProductID"`
