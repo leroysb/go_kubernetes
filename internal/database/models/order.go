@@ -3,11 +3,12 @@ package models
 import "gorm.io/gorm"
 
 type Order struct {
-    gorm.Model
-    CustomerID uint
-    ProductID  uint
-    Quantity   int
-    Amount     float64
-    Time       string
-    // Add other fields as needed
+	gorm.Model
+	Customer   Customer `gorm:"foreignKey:CustomerID"`
+	CustomerID uint
+	Product    Product `gorm:"foreignKey:ProductID"`
+	ProductID  uint
+	Quantity   int     `json:"quantity" gorm:"integer;not null;default:null"`
+	Amount     float64 `json:"amount" gorm:"float;not null;default:null"`
+	Time       string  `json:"time" gorm:"text;not null;default:null"`
 }
