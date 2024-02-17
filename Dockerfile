@@ -1,16 +1,26 @@
-FROM golang:1.17-alpine
+FROM golang:1.22
 
-WORKDIR /app
+# Set the Current Working Directory inside the container
+WORKDIR /usr/src/app
 
-COPY go.mod .
-COPY go.sum .
+# Download Go modules
+COPY go.mod  ./
+COPY go.sum ./
+RUN go mod download && go mod verify
 
-RUN go mod download
-
+# Copy the source code into the container
 COPY . .
 
-RUN go build -o main .
+# RUN go mod tidy
 
-EXPOSE 8000
+# Navigate to the cmd directory
+# WORKDIR /usr/src/app/cmd
 
-CMD ["./main"]
+# build the binary
+# RUN go build -v -o /usr/local/bin/app ./...
+
+# This container exposes port 8080 to the outside world
+EXPOSE 8080
+
+# Run the executable
+# CMD ["./api"]
