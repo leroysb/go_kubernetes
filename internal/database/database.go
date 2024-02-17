@@ -21,6 +21,7 @@ func ConnectDB() {
 	err = godotenv.Load("../.env")
 	if err != nil {
 		log.Println("Error loading .env file")
+		return
 	}
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
@@ -39,6 +40,7 @@ func ConnectDB() {
 		// err = fmt.Errorf("failed to connect to database: %v", err)
 		// log.Println(err)
 		log.Printf("Failed to connect to database: %v", err)
+		return
 	}
 
 	log.Println("Connected to database")
@@ -51,6 +53,7 @@ func ConnectDB() {
 		// err = fmt.Errorf("error performing auto-migration: %v", err)
 		// log.Println(err)
 		log.Printf("Error performing auto-migration: %v", err)
+		return
 	}
 
 	log.Println("Database migration successful")
@@ -58,7 +61,7 @@ func ConnectDB() {
 
 // MigrateDB performs auto-migration for all models
 func MigrateDB() error {
-	return db.AutoMigrate(&models.Product{})
+	return db.AutoMigrate(&models.Product{}, &models.Customer{}, &models.Order{})
 }
 
 // GetDB returns the initialized database instance
@@ -67,22 +70,23 @@ func GetDB() *gorm.DB {
 }
 
 func CheckDBConnection() bool {
-	if db == nil {
-		log.Println("Database connection is nil")
-		return false
-	}
-
 	sqlDB, err := db.DB()
-	if err != nil {
-		log.Printf("Error getting underlying database connection: %v", err)
-		return false
-	}
 
 	err = sqlDB.Ping()
 	if err != nil {
 		log.Printf("Error pinging database: %v", err)
 		return false
 	}
+
+	// if db == nil {
+	// 	log.Println("Database connection is nil")
+	// 	return false
+	// }
+
+	// if err != nil {
+	// 	log.Printf("Error getting underlying database connection: %v", err)
+	// 	return false
+	// }
 
 	log.Println("Database connection is alive")
 	return true
