@@ -1,21 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
-// var db *sql.DB
-var db *gorm.DB
-
 func main() {
 	// Connect to database
-	db = database.GetDB()
-	
+	database.ConnectDB()
+
 	// Initialize Fiber app
 	app := fiber.New()
 
@@ -23,8 +20,13 @@ func main() {
 	setupRoutes(app)
 
 	// Start server
+	var err error
+	err = godotenv.Load(".env")
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
 	port := os.Getenv("API_PORT")
-	
+
 	if port == "" {
 		port = "8080"
 	}
@@ -33,8 +35,5 @@ func main() {
 
 	if err != nil {
 		log.Fatal("Error starting server:", err)
-	} else {
-		log.Println("Server is running on port", port)
-		fmt.Println("Server is running on port", port)
 	}
 }
