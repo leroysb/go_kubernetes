@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/leroysb/go_kubernetes/internal/api/handlers"
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
@@ -13,17 +14,22 @@ func setupRoutes(app *fiber.App) {
 
 	api := app.Group("/api/v1")
 	api.Get("/status", StatusHandler)
-	// api.Get("/products", GetProducts)
-	// api.Post("/products", CreateProducts)
-	// api.Get("/products/:id", GetProduct)
-	// api.Put("/products/:id", UpdateProduct)
-	// api.Delete("/products/:id", DeleteProduct)
+	// api.Get("/stats", StatsHandler)
 
+	// Product endpoints
+	api.Get("/products", handlers.GetProducts)
+	api.Post("/products", handlers.CreateProduct)
+	api.Get("/products/:id", handlers.GetProduct)
+	api.Put("/products/:id", handlers.UpdateProduct)
+	api.Delete("/products/:id", handlers.DeleteProduct)
+
+	// Customer endpoints
 	// api.Post("/customers", CreateCustomer)
 	// api.Get("/customers/me", GetCustomers)
 	// api.Post("/customers/login", GetCustomer)
 	// api.Post("/customers/logout", GetCustomer)
 
+	// Order endpoints
 	// api.Post("/orders", CreateOrder)
 	// api.Get("/orders", GetOrders)
 	// api.Put("/orders/:id", UpdateOrder)
