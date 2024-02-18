@@ -1,6 +1,6 @@
 -- Create the database
-CREATE DATABASE leroysb;
+CREATE DATABASE storedb;
 
 --Create the user and grant priviledges
 CREATE USER leroysb WITH PASSWORD 'leroysb';
-GRANT ALL PRIVILEGES ON DATABASE leroysb TO leroysb;
+GRANT ALL PRIVILEGES ON DATABASE storedb TO leroysb;
