@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/leroysb/go_kubernetes/internal/database"
@@ -18,7 +19,6 @@ type RequestBody struct {
 
 // CreateProduct creates a new product
 func CreateProduct(c *fiber.Ctx) error {
-
 	product := new(models.Product)
 	if err := c.BodyParser(product); err != nil {
 		return c.Status(400).SendString(err.Error())
@@ -43,10 +43,15 @@ func CreateProduct(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Product already exists"})
 	}
 
-	// Create the product
-	if err := database.DB.Db.Create(&product).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
-	}
+	// Create the product in a goroutine
+	go func() {
+		if err := database.DB.Db.Create(&product).Error; err != nil {
+			// Handle error in goroutine
+			// fmt.Println("Error creating product:", err)
+			c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
+			return
+		}
+	}()
 
 	return c.Status(200).JSON(product)
 }
@@ -68,44 +73,101 @@ func GetProducts(c *fiber.Ctx) error {
 	offset := (pageNum - 1) * 20
 	limit := 20
 
-	// Fetch products from database
+	// Fetch products from database in a goroutine
 	var products []models.Product
-	if err := database.DB.Db.Offset(offset).Limit(limit).Find(&products).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
-	}
+	done := make(chan bool)
+	go func() {
+		if err := database.DB.Db.Offset(offset).Limit(limit).Find(&products).Error; err != nil {
+			done <- false
+		} else {
+			done <- true
+		}
+	}()
 
-	return c.Status(200).JSON(products)
+	select {
+	case success := <-done:
+		if success {
+			return c.Status(200).JSON(products)
+		} else {
+			return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
+		}
+	case <-time.After(5 * time.Second):
+		return c.Status(500).JSON(fiber.Map{"error": "Timeout"})
+	}
 }
 
 // GetProduct returns a single product
 func GetProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
 	product := new(models.Product)
-	if err := database.DB.Db.First(&product, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
+
+	done := make(chan bool)
+	go func() {
+		if err := database.DB.Db.First(&product, id).Error; err != nil {
+			done <- false
+		} else {
+			done <- true
+		}
+	}()
+
+	select {
+	case success := <-done:
+		if success {
+			return c.Status(200).JSON(product)
+		} else {
+			return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
+		}
+	case <-time.After(5 * time.Second):
+		return c.Status(500).JSON(fiber.Map{"error": "Timeout"})
 	}
-	return c.Status(200).JSON(product)
 }
 
 // UpdateProduct updates a product
 func UpdateProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
 	product := new(models.Product)
-	database.DB.Db.First(&product, id)
-	if err := c.BodyParser(product); err != nil {
-		return c.Status(400).SendString(err.Error())
+	done := make(chan bool)
+
+	go func() {
+		database.DB.Db.First(&product, id)
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		if err := c.BodyParser(product); err != nil {
+			return c.Status(400).SendString(err.Error())
+		}
+		database.DB.Db.Save(&product)
+		return c.JSON(product)
+	case <-time.After(5 * time.Second):
+		return c.Status(500).JSON(fiber.Map{"error": "Timeout"})
 	}
-	database.DB.Db.Save(&product)
-	return c.JSON(product)
 }
 
 // DeleteProduct deletes a product
 func DeleteProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
 	product := new(models.Product)
-	if err := database.DB.Db.First(&product, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
+
+	done := make(chan bool)
+	go func() {
+		if err := database.DB.Db.First(&product, id).Error; err != nil {
+			done <- false
+		} else {
+			done <- true
+		}
+	}()
+
+	select {
+	case success := <-done:
+		if success {
+			database.DB.Db.Delete(&product)
+			return c.Status(204).JSON(fiber.Map{"message": "Product deleted successfully"})
+		} else {
+			return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
+		}
+	case <-time.After(5 * time.Second):
+		return c.Status(500).JSON(fiber.Map{"error": "Timeout"})
 	}
-	database.DB.Db.Delete(&product)
-	return c.Status(204).JSON(fiber.Map{"message": "Product deleted successfully"})
 }
