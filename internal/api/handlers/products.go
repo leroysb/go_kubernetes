@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,32 +11,46 @@ import (
 	"github.com/leroysb/go_kubernetes/internal/database/models"
 )
 
-type RequestBody struct {
-	Name  string `json:"name"`
-	Price string `json:"price"`
-	Stock int    `json:"stock"`
-}
-
-// var db *gorm.DB
-
 // CreateProduct creates a new product
 func CreateProduct(c *fiber.Ctx) error {
 	product := new(models.Product)
+
+	// Error check fields
 	if err := c.BodyParser(product); err != nil {
+		if _, ok := err.(*json.UnmarshalTypeError); ok {
+			// Check if the error is related to the "stock" field
+			if strings.Contains(err.Error(), "stock") {
+				return c.Status(400).JSON(fiber.Map{"error": "Missing stock of type integer"})
+			}
+			// Check if the error is related to the "price" field
+			if strings.Contains(err.Error(), "price") {
+				return c.Status(400).JSON(fiber.Map{"error": "Missing price of type integer"})
+			}
+			if strings.Contains(err.Error(), "name") {
+				return c.Status(400).JSON(fiber.Map{"error": "Missing name of type string"})
+			}
+		}
+		if _, ok := err.(*json.SyntaxError); ok {
+			if strings.Contains(string(c.Body()), "stock") {
+				return c.Status(400).JSON(fiber.Map{"error": "Invalid stock number format"})
+			}
+			if strings.Contains(string(c.Body()), "price") {
+				return c.Status(400).JSON(fiber.Map{"error": "Invalid price number format"})
+			}
+		}
 		return c.Status(400).SendString(err.Error())
 	}
 
-	// Check for required fields
 	if product.Name == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Missing product name"})
+		return c.Status(400).JSON(fiber.Map{"error": "Missing name"})
 	}
 
-	if product.Price == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "Missing product price"})
+	if product.Price <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Price must be a positive integer"})
 	}
 
-	if product.Stock == 0 {
-		return c.Status(400).JSON(fiber.Map{"error": "Missing product stock"})
+	if product.Stock <= 0 {
+		return c.Status(400).JSON(fiber.Map{"error": "Stock must be a positive integer"})
 	}
 
 	// Check if product already exists
@@ -136,8 +152,42 @@ func UpdateProduct(c *fiber.Ctx) error {
 	select {
 	case <-done:
 		if err := c.BodyParser(product); err != nil {
+			if _, ok := err.(*json.UnmarshalTypeError); ok {
+				// Check if the error is related to the "stock" field
+				if strings.Contains(err.Error(), "stock") {
+					return c.Status(400).JSON(fiber.Map{"error": "Missing stock of type integer"})
+				}
+				// Check if the error is related to the "price" field
+				if strings.Contains(err.Error(), "price") {
+					return c.Status(400).JSON(fiber.Map{"error": "Missing price of type integer"})
+				}
+				if strings.Contains(err.Error(), "name") {
+					return c.Status(400).JSON(fiber.Map{"error": "Missing name of type string"})
+				}
+			}
+			if _, ok := err.(*json.SyntaxError); ok {
+				if strings.Contains(string(c.Body()), "stock") {
+					return c.Status(400).JSON(fiber.Map{"error": "Invalid stock number format"})
+				}
+				if strings.Contains(string(c.Body()), "price") {
+					return c.Status(400).JSON(fiber.Map{"error": "Invalid price number format"})
+				}
+			}
 			return c.Status(400).SendString(err.Error())
 		}
+
+		if product.Name == "" {
+			return c.Status(400).JSON(fiber.Map{"error": "Missing name"})
+		}
+
+		if product.Stock <= 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "Stock must be a positive integer"})
+		}
+
+		if product.Price <= 0 {
+			return c.Status(400).JSON(fiber.Map{"error": "Price must be a positive integer"})
+		}
+
 		database.DB.Db.Save(&product)
 		return c.JSON(product)
 	case <-time.After(5 * time.Second):
