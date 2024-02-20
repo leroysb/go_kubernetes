@@ -1,14 +1,28 @@
 package main
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/leroysb/go_kubernetes/internal/api/handlers"
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
 func setupRoutes(app *fiber.App) {
+	// Middleware
+	app.Use(limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return fiber.NewError(fiber.StatusTooManyRequests, "Rate limit exceeded")
+		},
+	}))
 	app.Use(cors.New())
 	app.Use(logger.New())
 
@@ -24,16 +38,17 @@ func setupRoutes(app *fiber.App) {
 	api.Delete("/products/:id", handlers.DeleteProduct)
 
 	// Customer endpoints
-	// api.Post("/customers", CreateCustomer)
-	// api.Get("/customers/me", GetCustomers)
-	// api.Post("/customers/login", GetCustomer)
-	// api.Post("/customers/logout", GetCustomer)
+	api.Post("/customers", handlers.CreateCustomer)
+	api.Get("/customers/me", handlers.GetCustomer)
+	api.Post("/customers/login", handlers.Login)
+	api.Post("/customers/logout", handlers.Logout)
+	api.Post("/customers/cart", handlers.CreateCart)
+	api.Get("/customers/cart", handlers.GetCart)
+	api.Put("/customers/cart/:id", handlers.UpdateCart)
+	api.Delete("/customers/cart/:id", handlers.DeleteCart)
 
 	// Order endpoints
-	// api.Post("/orders", CreateOrder)
-	// api.Get("/orders", GetOrders)
-	// api.Put("/orders/:id", UpdateOrder)
-	// api.Delete("/orders/:id", DeleteOrder)
+	api.Get("/orders", handlers.GetOrders)
 
 	// 404 Handler
 	app.Use(notFoundHandler)
