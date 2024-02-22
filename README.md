@@ -1,4 +1,4 @@
-# Store API
+# Containerized E-commerce API
 ## Introduction
 This project is an ecommerce API developed using Golang and docker containers. Its purpose is to provide a hands-on experience in building a scalable and efficient ecommerce platform. By using Golang, we aim to leverage its performance and concurrency features. The project is designed to handle various aspects of an ecommerce platform, including product management, order processing, and customer management. With the use of containers, we ensure easy deployment and scalability of the application.
 
@@ -16,12 +16,11 @@ This project is an ecommerce API developed using Golang and docker containers. I
 
 Remember to replace the version numbers and repository URLs with the ones that are relevant to your project. Also, ensure that you have the necessary permissions to clone the repositories and run Docker commands.
 
-
 ## Usage
 // TO-DO: Describe how to use the project, including any command-line options, configuration settings, or API endpoints.
 
 ## Features
-1.**Dockerized Go Application**: The project is a Go application that is containerized using Docker, allowing for easy setup, consistent environments, and scalability.
+1. **Dockerized Go Application**: The project is a Go application that is containerized using Docker, allowing for easy setup, consistent environments, and scalability.
 
 2. **Kubernetes Integration**: The application is designed to be deployed on a Kubernetes cluster, providing robust orchestration capabilities such as automated rollouts, rollbacks, service discovery, and load balancing.
 
