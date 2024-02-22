@@ -25,12 +25,13 @@ func setupRoutes(app *fiber.App) {
 	}))
 	app.Use(cors.New())
 	app.Use(logger.New())
+	// app.Use(auth.AuthMiddleware())
 
 	api := app.Group("/api/v1")
 	api.Get("/status", StatusHandler)
 	// api.Get("/stats", StatsHandler)
 
-	// Product endpoints
+	// Public Product endpoints
 	api.Get("/products", handlers.GetProducts)
 	api.Post("/products", handlers.CreateProduct)
 	api.Get("/products/:id", handlers.GetProduct)
@@ -38,14 +39,16 @@ func setupRoutes(app *fiber.App) {
 	api.Delete("/products/:id", handlers.DeleteProduct)
 
 	// Customer endpoints
-	api.Post("/customers", handlers.CreateCustomer)
-	api.Get("/customers/me", handlers.GetCustomer)
-	api.Post("/customers/login", handlers.Login)
-	api.Post("/customers/logout", handlers.Logout)
+	api.Post("/customers", handlers.CreateCustomer) // Public Endpoint for user registration
+
+	api.Get("/customers/login", handlers.Login) // Public Endpoint for user authentication
+	// api.Get("/customers/me", auth.AuthMiddleware(), handlers.GetCustomer) // Endpoint to retrieve authorized user information
+	// api.Post("/customers/logout", auth.AuthMiddleware(), handlers.Logout)
 	api.Post("/customers/cart", handlers.CreateCart)
 	api.Get("/customers/cart", handlers.GetCart)
 	api.Put("/customers/cart/:id", handlers.UpdateCart)
 	api.Delete("/customers/cart/:id", handlers.DeleteCart)
+	api.Post("/customers/orders/:id", handlers.CreateOrder)
 
 	// Order endpoints
 	api.Get("/orders", handlers.GetOrders)
