@@ -13,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/leroysb/go_kubernetes/internal/database"
 	"github.com/leroysb/go_kubernetes/internal/database/models"
+	"github.com/leroysb/go_kubernetes/internal/sms"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -113,6 +114,10 @@ func CreateCustomer(c *fiber.Ctx) error {
 			c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 			return
 		}
+	}()
+
+	go func() {
+		sms.SendSMS(customer.Phone, "Welcome to our platform")
 	}()
 
 	return c.Status(200).JSON(customer)
@@ -354,6 +359,9 @@ func DeleteCart(c *fiber.Ctx) error {
 }
 
 func CreateOrder(c *fiber.Ctx) error {
+	// Retrieve user information from the context
+	user := c.Locals("user").(*models.Customer)
+
 	order := new(models.Order)
 
 	// Error check fields
@@ -401,6 +409,10 @@ func CreateOrder(c *fiber.Ctx) error {
 			c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 			return
 		}
+	}()
+
+	go func() {
+		sms.SendSMS(user.Phone, "Order successful")
 	}()
 
 	// reduce the stock of the product
