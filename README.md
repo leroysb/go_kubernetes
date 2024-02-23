@@ -3,7 +3,6 @@
 ## Introduction
 This project is an ecommerce API developed using Golang and docker containers. Its purpose is to provide a hands-on experience in building a scalable and efficient ecommerce platform. By using Golang, we aim to leverage its performance and concurrency features. The project is designed to handle various aspects of an ecommerce platform, including product management, order processing, and customer management. With the use of containers, we ensure easy deployment and scalability of the application.
 
-
 ## Installation
 1. **Requirements**: Before starting, ensure that you have Docker version 25.0.3 and Go version 1.22 installed on your machine. These are necessary to build and run the project.
 
@@ -13,12 +12,12 @@ This project is an ecommerce API developed using Golang and docker containers. I
 
 4. **Clone the Hydra repository**: The project also requires the ORY Hydra OAuth2 and OpenID Connect server. Use the command `git clone https://github.com/ory/hydra.git` to clone this repository into the project's root directory.
 
-5. **Build and run the project with Docker Compose**: Use the command `docker compose -f docker-compose.yml -f hydra/quickstart.yml -f hydra/quickstart-postgres.yml up --build` to start the project. This command tells Docker Compose to build and run the Docker containers defined in the `docker-compose.yml`, `hydra/quickstart.yml`, and `hydra/quickstart-postgres.yml` files.
+5. **Update environment variables**: rename the file `public.env` to `.env`. Head over to [Africa's Talking](https://developers.africastalking.com) and log into your account. If you do not have an account, sign up then obtain the necessary credentials such as username, apiKey, and shortcode. Update the missing values in your `.env`.
 
-Remember to replace the version numbers and repository URLs with the ones that are relevant to your project. Also, ensure that you have the necessary permissions to clone the repositories and run Docker commands.
+6. **Build and run the project with Docker Compose**: Use the command `docker compose -f docker-compose.yml -f hydra/quickstart.yml up --build` to start the project. This command tells Docker Compose to build and run the Docker containers defined in the `docker-compose.yml`, `hydra/quickstart.yml`, and `hydra/quickstart-postgres.yml` files.
 
 ## Usage
-// TO-DO: Describe how to use the project, including any command-line options, configuration settings, or API endpoints.
+You can interact with the API through the command line in a bash terminal. See [Examples](#examples) for more.
 
 ## Features
 1. **Dockerized Go Application**: The project is a Go application that is containerized using Docker, allowing for easy setup, consistent environments, and scalability.
@@ -32,7 +31,35 @@ Remember to replace the version numbers and repository URLs with the ones that a
 5. **Africa's Talking API Integration**: The project uses the Africa's Talking API to send SMS notifications to customers when they place an order, enhancing the user experience and providing real-time updates.
 
 ## Examples
-// TO-DO: Provide code examples or usage scenarios to help users understand how to use the project effectively.
+Check API status
+```
+curl -XGET 0.0.0.0:8080/api/v1/status
+```
+
+Get existing products
+```
+curl -XGET 0.0.0.0:8080/api/v1/products?page=1
+```
+
+Create a product
+```
+curl -X POST -H "Content-Type: application/json" -d '{"name": "Product 1", "price": 200, "stock": 5}' 0.0.0.0:8080/api/v1/products
+```
+
+Create a user - ***replace the phone number with your number to test SMS functionality***
+```
+curl -X POST -H "Content-Type: application/json" -d '{"name": "Customer 1", "phone": "+254700123456", "password": "secret"}' 0.0.0.0:8080/api/v1/customers
+```
+
+Get the currently logged in customer without authentication
+```
+curl -XGET 0.0.0.0:8080/api/v1/customers/me
+```
+
+Authenticate an existing customer
+```
+curl -X POST -H "Content-Type: application/json" -d '{"phone": "+254700123456", "password": "secret"}' 0.0.0.0:8080/api/v1/customers/login
+```
 
 ## Contributing
 1. **Fork the Repository**: Start by forking the project repository to your own GitHub account. This creates a copy of the repository under your account where you can make changes without affecting the original project.
