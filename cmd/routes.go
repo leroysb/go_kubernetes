@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/leroysb/go_kubernetes/internal/api/auth"
 	"github.com/leroysb/go_kubernetes/internal/api/handlers"
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
@@ -41,9 +42,9 @@ func setupRoutes(app *fiber.App) {
 	// Customer endpoints
 	api.Post("/customers", handlers.CreateCustomer) // Public Endpoint for user registration
 
-	api.Get("/customers/login", handlers.Login) // Public Endpoint for user authentication
-	// api.Get("/customers/me", auth.AuthMiddleware(), handlers.GetCustomer) // Endpoint to retrieve authorized user information
-	// api.Post("/customers/logout", auth.AuthMiddleware(), handlers.Logout)
+	api.Get("/customers/login", handlers.Login)                           // Public Endpoint for user authentication
+	api.Get("/customers/me", auth.AuthMiddleware(), handlers.GetCustomer) // Endpoint to retrieve authorized user information
+	api.Post("/customers/logout", auth.AuthMiddleware(), handlers.Logout)
 	api.Post("/customers/cart", handlers.CreateCart)
 	api.Get("/customers/cart", handlers.GetCart)
 	api.Put("/customers/cart/:id", handlers.UpdateCart)
