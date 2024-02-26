@@ -1,65 +1,21 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/leroysb/go_kubernetes/internal/api/auth"
 	"github.com/leroysb/go_kubernetes/internal/database"
 	"github.com/leroysb/go_kubernetes/internal/database/models"
 	"github.com/leroysb/go_kubernetes/internal/sms"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/leroysb/go_kubernetes/internal/utils"
 	"gorm.io/gorm"
 )
-
-type HydraClientRequest struct {
-	ClientName        string   `json:"client_name"`
-	ClientSecret      string   `json:"client_secret"`
-	GrantTypes        []string `json:"grant_types"`
-	Scope             string   `json:"scope"`
-	TokenEndpointAuth string   `json:"token_endpoint_auth_method"`
-}
-
-type HydraClientResponse struct {
-	ClientID string `json:"client_id"`
-}
-
-type Cart struct {
-	ProductID uint `json:"product_id"`
-	Quantity  int  `json:"quantity"`
-}
-
-// checkPasswordHash compares a hashed password with its possible plaintext equivalent
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-// hashPassword generates a hash of the password using bcrypt
-func hashPassword(password string) string {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash)
-}
-
-// getUserByEmail retrieves a user from the database by email
-func getUserByPhone(phone string) (*models.Customer, error) {
-	var user models.Customer
-	if err := database.DB.Db.Where("phone = ?", phone).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Return nil if user not found
-			return nil, nil
-		}
-		// Return error for other database errors
-		return nil, err
-	}
-	return &user, nil
-}
 
 // CreateCustomer creates a new customer
 func CreateCustomer(c *fiber.Ctx) error {
@@ -72,11 +28,17 @@ func CreateCustomer(c *fiber.Ctx) error {
 				return c.Status(400).JSON(fiber.Map{"error": "Missing name of type string"})
 			}
 			if strings.Contains(err.Error(), "phone") {
-				return c.Status(400).JSON(fiber.Map{"error": "Missing phone number of type string"})
+				return c.Status(400).JSON(fiber.Map{"error": "Missing phone of type string"})
 			}
 			if strings.Contains(err.Error(), "password") {
 				return c.Status(400).JSON(fiber.Map{"error": "Missing password of type string"})
 			}
+		}
+		if strings.Contains(err.Error(), "unexpected end of JSON input") {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid JSON input"})
+		}
+		if errors.Is(err, fiber.ErrUnprocessableEntity) {
+			return c.Status(422).JSON(fiber.Map{"error": "Unprocessable Entity"})
 		}
 		return c.Status(400).SendString(err.Error())
 	}
@@ -86,7 +48,7 @@ func CreateCustomer(c *fiber.Ctx) error {
 	}
 
 	if customer.Phone == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Missing phone number"})
+		return c.Status(400).JSON(fiber.Map{"error": "Missing phone"})
 	}
 
 	if customer.Password == "" {
@@ -94,10 +56,7 @@ func CreateCustomer(c *fiber.Ctx) error {
 	}
 
 	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(customer.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to hash password"})
-	}
+	hashedPassword := utils.HashPassword(customer.Password)
 	customer.Password = string(hashedPassword)
 
 	// Check if customer already exists
@@ -117,10 +76,11 @@ func CreateCustomer(c *fiber.Ctx) error {
 	}()
 
 	go func() {
-		sms.SendSMS(customer.Phone, "Welcome to our platform")
+		sms.SendSMS(customer.Phone, "Welcome to our go_kubernetes platform")
 	}()
 
-	return c.Status(200).JSON(customer)
+	// return c.Status(200).JSON(customer)
+	return c.Status(200).JSON(fiber.Map{"message": "Sign up successful"})
 }
 
 func Login(c *fiber.Ctx) error {
@@ -129,89 +89,56 @@ func Login(c *fiber.Ctx) error {
 		Password string `json:"password"`
 	}
 	if err := c.BodyParser(&loginData); err != nil {
-		return err
+		if _, ok := err.(*json.UnmarshalTypeError); ok {
+			if strings.Contains(err.Error(), "phone") {
+				return c.Status(400).JSON(fiber.Map{"error": "Missing phone number of type string"})
+			}
+			if strings.Contains(err.Error(), "password") {
+				return c.Status(400).JSON(fiber.Map{"error": "Missing password of type string"})
+			}
+		}
+		if strings.Contains(err.Error(), "unexpected end of JSON input") {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid JSON input"})
+		}
+		if errors.Is(err, fiber.ErrUnprocessableEntity) {
+			return c.Status(422).JSON(fiber.Map{"error": "Unprocessable Entity"})
+		}
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+	}
+
+	if loginData.Phone == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Missing phone"})
+	}
+
+	if loginData.Password == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Missing password"})
 	}
 
 	// Retrieve user from the database
-	user, err := getUserByPhone(loginData.Phone)
+	user, err := GetUserByPhone(loginData.Phone)
 	if err != nil {
 		return err
 	}
 
 	// Check if the user exists and the password matches
-	if user == nil || !checkPasswordHash(loginData.Password, user.Password) {
-		// Return unauthorized error if user does not exist or password does not match
+	if user == nil || !utils.CheckPasswordHash(loginData.Password, user.Password) {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
-	// Create request body for Hydra client creation
-	clientRequest := HydraClientRequest{
-		ClientName:        user.Name,
-		ClientSecret:      hashPassword(loginData.Password),
-		GrantTypes:        []string{"client_credentials"},
-		Scope:             os.Getenv("hydraScope"),
-		TokenEndpointAuth: "client_secret_post",
-	}
-
-	// Convert struct to JSON
-	clientRequestBody, err := json.Marshal(clientRequest)
-	if err != nil {
-		return err
-	}
-
-	// Send POST request to Hydra client creation endpoint
-	resp, err := http.Post(os.Getenv("hydraClientUrl"), "application/json", bytes.NewBuffer(clientRequestBody))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Parse response
-	var clientResponse HydraClientResponse
-	if err := json.NewDecoder(resp.Body).Decode(&clientResponse); err != nil {
-		return err
-	}
-
-	// Return the client_id as the response
-	// return c.JSON(clientResponse)
-
-	// Create request body for Hydra token creation
-	tokenRequest := struct {
-		GrantType    string `json:"grant_type"`
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
-		Scope        string `json:"scope"`
-	}{
-		GrantType:    "client_credentials",
-		ClientID:     clientResponse.ClientID,
-		ClientSecret: clientRequest.ClientSecret, // Use the hashed password as client secret
-		Scope:        os.Getenv("hydraScope"),
-	}
-
-	// Convert struct to JSON
-	tokenRequestBody, err := json.Marshal(tokenRequest)
-	if err != nil {
-		return err
-	}
-
-	// Send POST request to Hydra token creation endpoint
-	resp, err = http.Post(os.Getenv("hydraTokenUrl"), "application/json", bytes.NewBuffer(tokenRequestBody))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Parse response
-	var tokenResponse map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResponse); err != nil {
-		return err
-	}
+	// Execute GetAccessToken function to get the access token
+	accessToken, err := auth.GetAccessToken()
 
 	// Extract access token from response
-	accessToken, ok := tokenResponse["access_token"].(string)
-	if !ok {
-		return errors.New("access token not found in response")
+	if accessToken == "" {
+		fmt.Println("Access token not found in Hydra token creation response")
+		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 	}
+
+	if err != nil {
+		fmt.Println("Error getting access token:", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
+	}
+
 	// Set the access token in the response headers
 	c.Set("Authorization", "Bearer "+accessToken)
 
@@ -301,7 +228,7 @@ func GetCart(c *fiber.Ctx) error {
 	user := c.Locals("user").(*models.Customer)
 
 	// Retrieve cart items from the database
-	var cartItems []Cart
+	var cartItems []models.Cart
 	if err := database.DB.Db.Table("orders").Select("product_id, quantity").Where("customer_id = ? AND status = ?", user.ID, "cart").Scan(&cartItems).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 	}
@@ -315,7 +242,7 @@ func UpdateCart(c *fiber.Ctx) error {
 	user := c.Locals("user").(*models.Customer)
 
 	// Retrieve product_id and quantity from the request
-	var cartItem Cart
+	var cartItem models.Cart
 	if err := c.BodyParser(&cartItem); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
