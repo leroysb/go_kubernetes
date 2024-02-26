@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,22 +13,118 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type TokenInfo struct {
-	Active    bool   `json:"active"`
-	Scope     string `json:"scope"`
-	ClientID  string `json:"client_id"`
-	Sub       string `json:"sub"`
-	Exp       int    `json:"exp"`
-	Iat       int    `json:"iat"`
-	Nbf       int    `json:"nbf"`
-	Aud       []any  `json:"aud"`
-	Iss       string `json:"iss"`
-	TokenType string `json:"token_type"`
-	TokenUse  string `json:"token_use"`
-}
-
 var requiredScope = os.Getenv("requiredScope")
 var hydraAdminUrl = os.Getenv("hydraAdminUrl")
+
+// HydraClientResponse communicates with the Hydra admin API to create a new OAuth2 client
+func GetAccessToken() (string, error) {
+	var clientURL = os.Getenv("HYDRA_CLIENT_URL")
+	var tokenURL = os.Getenv("HYDRA_TOKEN_URL")
+	var scope = os.Getenv("HYDRA_SCOPE")
+	var clientName = os.Getenv("HYDRA_CLIENT_NAME")
+	var clientSecret = os.Getenv("HYDRA_CLIENT_SECRET")
+
+	client := &http.Client{}
+
+	var clientRequest = ClientRequest{
+		ClientName:        clientName,
+		ClientSecret:      clientSecret,
+		GrantTypes:        []string{"authorization_code", "refresh_token"},
+		Scope:             scope,
+		TokenEndpointAuth: "none",
+	}
+
+	clientRequestBody, err := json.Marshal(clientRequest)
+	if err != nil {
+		fmt.Println("Error marshalling client id request:", err)
+		return "", err
+	}
+
+	// create the HTTP request
+	clientReq, err := http.NewRequest("POST", clientURL, bytes.NewBuffer(clientRequestBody))
+	if err != nil {
+		fmt.Println("Error creating client id request:", err)
+		return "", err
+	}
+
+	// set the request headers
+	clientReq.Header.Set("Content-Type", "application/json")
+	// req.Header.Set("Accept", "*/*")
+	// req.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	// req.Header.Set("Connection", "keep-alive")
+
+	// send the request
+	clientResp, err := client.Do(clientReq)
+	if err != nil {
+		fmt.Println("Error sending client id request:", err)
+		return "", err
+	}
+	defer clientResp.Body.Close()
+
+	if clientResp.StatusCode != http.StatusOK {
+		return "", errors.New("client id creation failed. unexpected status code")
+	}
+
+	var clientResponse ClientResponse
+	if err := json.NewDecoder(clientResp.Body).Decode(&clientResponse); err != nil {
+		fmt.Println("Error decoding client id response:", err)
+		return "", err
+	}
+
+	// TO-DO: Delete
+	fmt.Println("Client ID:", clientResponse.ClientID)
+
+	var tokenRequest = TokenRequest{
+		ClientID:  clientResponse.ClientID,
+		GrantType: "client_credentials",
+		// ClientSecret: clientSecret,
+		// Scope:        scope,
+	}
+
+	var tokenRequestBody []byte
+	tokenRequestBody, err = json.Marshal(tokenRequest)
+	if err != nil {
+		fmt.Println("Error marshalling token request:", err)
+		return "", err
+	}
+
+	// create the HTTP request for token creation
+	var tokenReq *http.Request
+	tokenReq, err = http.NewRequest("POST", tokenURL, bytes.NewBuffer(tokenRequestBody))
+	if err != nil {
+		fmt.Println("Error creating token request:", err)
+		return "", err
+	}
+
+	// set the request headers
+	tokenReq.Header.Set("Content-Type", "application/json")
+	// tokenReq.Header.Set("Accept", "*/*")
+	// tokenReq.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	// tokenReq.Header.Set("Connection", "keep-alive")
+
+	var tokenResp *http.Response
+	tokenResp, err = client.Do(tokenReq)
+	if err != nil {
+		fmt.Println("Error sending token request:", err)
+		return "", err
+	}
+	defer tokenResp.Body.Close()
+
+	if tokenResp.StatusCode != http.StatusOK {
+		return "", errors.New("token creation failed")
+	}
+
+	var tokenResponse TokenResponse
+	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenResponse); err != nil {
+		fmt.Println("Error decoding token response:", err)
+		return "", err
+	}
+
+	// TO-DO: Delete
+	fmt.Println("Access Token:", tokenResponse.AccessToken)
+
+	return tokenResponse.AccessToken, nil
+}
 
 // introspectToken sends a request to the Hydra introspection endpoint to validate the access token
 func introspectToken(accessToken string) (*TokenInfo, error) {
@@ -78,7 +176,7 @@ func hasScope(tokenScope string, requiredScope string) bool {
 }
 
 // AuthMiddleware is a middleware function to validate access token using Hydra introspection endpoint
-func AuthMiddleware() fiber.Handler {
+func AuthMiddleware(next fiber.Handler) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Get the access token from the request headers
 		authHeader := c.Get("Authorization")
@@ -95,16 +193,16 @@ func AuthMiddleware() fiber.Handler {
 		tokenInfo, err := introspectToken(accessToken)
 		if err != nil || !tokenInfo.Active {
 			fmt.Println("Error during token introspection:", err)
-			c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
-			return err
+			// return err
+			return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
 		// Check if the token is active
 		if !hasScope(tokenInfo.Scope, requiredScope) {
 			// If token is not active or not present, return unauthorized error
 			fmt.Printf("Insufficient scope: %v\n", err)
-			return c.Status(http.StatusForbidden).JSON(fiber.Map{"error": "Insufficient scope"})
 			// return err
+			return c.Status(http.StatusForbidden).JSON(fiber.Map{"error": "Insufficient scope"})
 		}
 
 		// Proceed to the next middleware or handler if token is valid
