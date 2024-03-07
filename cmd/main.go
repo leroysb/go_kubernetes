@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	"github.com/leroysb/go_kubernetes/internal/api/routes"
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
@@ -24,7 +25,7 @@ func main() {
 	app := fiber.New()
 
 	// Define routes
-	setupRoutes(app)
+	routes.SetupRoutes(app)
 
 	// Start server
 	port := os.Getenv("API_PORT")

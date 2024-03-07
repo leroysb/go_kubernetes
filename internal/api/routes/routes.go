@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"time"
@@ -12,7 +12,7 @@ import (
 	"github.com/leroysb/go_kubernetes/internal/database"
 )
 
-func setupRoutes(app *fiber.App) {
+func SetupRoutes(app *fiber.App) {
 	// Middleware
 	app.Use(limiter.New(limiter.Config{
 		Max:        10,
@@ -58,9 +58,9 @@ func setupRoutes(app *fiber.App) {
 
 func StatusHandler(c *fiber.Ctx) error {
 	if database.CheckDBConnection() {
-		return c.Status(200).JSON(fiber.Map{"Postgres": true})
+		return c.Status(200).JSON(fiber.Map{"Postgres": "OK"})
 	}
-	return c.Status(500).JSON(fiber.Map{"Postgres": false})
+	return c.Status(500).JSON(fiber.Map{"Postgres": "Error"})
 }
 
 func notFoundHandler(c *fiber.Ctx) error {
